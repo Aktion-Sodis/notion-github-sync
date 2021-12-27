@@ -1,12 +1,3 @@
-/* ================================================================================
-
-	notion-github-sync.
-  
-  Glitch example: https://glitch.com/edit/#!/notion-github-sync
-  Find the official Notion API client @ https://github.com/makenotion/notion-sdk-js/
-
-================================================================================ */
-
 const { Client } = require("@notionhq/client");
 const dotenv = require("dotenv");
 const { Octokit } = require("octokit");
@@ -90,14 +81,6 @@ async function getIssuesFromNotionDatabase() {
   });
 }
 
-/**
- * Gets issues from a GitHub repository. Pull requests are omitted.
- *
- * https://docs.github.com/en/rest/guides/traversing-with-pagination
- * https://docs.github.com/en/rest/reference/issues
- *
- * @returns {Promise<Array<{ number: number, title: string, state: "open" | "closed", comment_count: number, url: string }>>}
- */
 async function getGitHubIssuesForRepository() {
   const issues = [];
   const iterator = octokit.paginate.iterator(octokit.rest.issues.listForRepo, {
@@ -115,6 +98,8 @@ async function getGitHubIssuesForRepository() {
           state: issue.state,
           comment_count: issue.comments,
           url: issue.html_url,
+          labels: issue.labels.map((l) => ({ name: l.name, color: l.color })),
+          assignees: issue.assignees.map((a) => ({ login: a.login })),
         });
       }
     }
@@ -202,7 +187,7 @@ async function updatePages(pagesToUpdate) {
  * @param {{ number: number, title: string, state: "open" | "closed", comment_count: number, url: string }} issue
  */
 function getPropertiesFromIssue(issue) {
-  const { title, number, state, comment_count, url } = issue;
+  const { title, number, state, comment_count, url, labels, assignees } = issue;
   return {
     Name: {
       title: [{ type: "text", text: { content: title } }],
@@ -218,6 +203,16 @@ function getPropertiesFromIssue(issue) {
     },
     "Issue URL": {
       url,
+    },
+    Labels: {
+      multi_select: labels.map((l) => ({
+        name: l.name,
+      })),
+    },
+    Assignees: {
+      multi_select: assignees.map((a) => ({
+        name: a.login,
+      })),
     },
   };
 }
